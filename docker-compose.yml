@@ -1,0 +1,32 @@
+# docker compose up -d                  -> PostgreSQL with pgvector only (the usual dev setup)
+# docker compose --profile ollama up -d -> also Ollama in a container (CPU only unless you
+#                                          add GPU settings; a native install is simpler)
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ragent
+      POSTGRES_PASSWORD: ragent
+      POSTGRES_DB: ragent
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ragent -d ragent"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  ollama:
+    image: ollama/ollama
+    profiles: ["ollama"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+
+volumes:
+  pgdata:
+  ollama:

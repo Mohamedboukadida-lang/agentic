@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.env
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+dist/
+build/
+# Fetched documentation is not committed (licence, size). Commit data/sources.yaml instead.
+data/raw/*
+!data/raw/.gitkeep
+# Eval run outputs
+evals/runs/

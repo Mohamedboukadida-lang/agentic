@@ -1,0 +1,56 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - name: Lint
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Unit tests
+        run: pytest -q
+      - name: Offline retrieval smoke test
+        run: ragent search "What is the default visibility timeout for an SQS queue?" --offline data/sample
+
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: ragent
+          POSTGRES_PASSWORD: ragent
+          POSTGRES_DB: ragent
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ragent -d ragent"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      RAGENT_DATABASE_URL: postgresql://ragent:ragent@localhost:5432/ragent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - name: Integration tests (pgvector store)
+        run: pytest -q -m integration

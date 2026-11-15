@@ -1,0 +1,27 @@
+# Pages to fetch with `make fetch`. `name` becomes the document id used in citations
+# (for example sqs-visibility#3) and in the eval labels, so keep names short and stable.
+#
+# This is a starter list written from memory. Open each URL once before you fetch: AWS
+# moves pages, and a redirect to a landing page gives you a useless document. Grow the
+# list to 15-25 pages covering the services on your exam.
+
+- name: sqs-overview
+  url: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html
+- name: sqs-visibility
+  url: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html
+- name: sqs-dlq
+  url: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html
+- name: sns-overview
+  url: https://docs.aws.amazon.com/sns/latest/dg/welcome.html
+- name: eventbridge-overview
+  url: https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-what-is.html
+- name: lambda-overview
+  url: https://docs.aws.amazon.com/lambda/latest/dg/welcome.html
+- name: lambda-sqs
+  url: https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html
+- name: dynamodb-overview
+  url: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html
+- name: s3-overview
+  url: https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html
+- name: apigateway-overview
+  url: https://docs.aws.amazon.com/apigateway/latest/developerguide/welcome.html
