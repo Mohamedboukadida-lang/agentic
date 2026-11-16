@@ -4,14 +4,16 @@
     ragent ingest data/sample              load, chunk, embed and store a folder
     ragent chunk-stats data/sample         compare chunking settings without storing
     ragent search "visibility timeout"     show retrieval with per-stage ranks
+    ragent ask "..."                       ask the agent (--single-shot for plain RAG)
 
-Add --offline DIR to search to run with fake providers and an in-memory store filled
-from DIR. No Ollama and no database needed.
+Add --offline DIR to search and ask to run with fake providers and an in-memory store
+filled from DIR. No Ollama and no database needed.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
 from pathlib import Path
@@ -94,6 +96,22 @@ def cmd_search(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_ask(args: argparse.Namespace) -> int:
+    c = _container(args)
+    answerer = c.single_shot if args.single_shot else c.agent
+    answer = answerer.answer(args.question)
+    if args.json:
+        print(json.dumps(answer.to_dict(), indent=2))
+        return 0
+    for step in answer.steps:
+        print(f"  -> {step.tool}({json.dumps(step.arguments)}) = {step.result_ids} [{step.ms} ms]")
+    print(f"\n{answer.text}\n")
+    for citation in answer.citations:
+        print(f"  [{citation.id}] {citation.section}")
+    print(f"\n({answer.stop_reason}, {answer.latency_ms} ms, trace {answer.trace_id})")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="ragent", description="Agentic RAG assistant")
     parser.add_argument("-v", "--verbose", action="store_true", help="print trace logs")
@@ -119,6 +137,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--mode", choices=["hybrid", "vector", "keyword"])
     p.add_argument("--offline", metavar="DIR")
     p.set_defaults(func=cmd_search)
+
+    p = sub.add_parser("ask", help="ask a question")
+    p.add_argument("question")
+    p.add_argument("--single-shot", action="store_true", help="plain RAG, no agent loop")
+    p.add_argument("--json", action="store_true")
+    p.add_argument("--offline", metavar="DIR")
+    p.set_defaults(func=cmd_ask)
     return parser
 
 

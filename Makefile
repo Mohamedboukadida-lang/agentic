@@ -3,7 +3,7 @@ PY ?= python3
 Q ?= What is the default visibility timeout for an SQS queue?
 CORPUS ?= data/raw
 
-.PHONY: help setup models up down migrate ingest-sample ingest fetch search \
+.PHONY: help setup models up down migrate ingest-sample ingest fetch ask search \
         test test-integration lint format chunk-stats demo-offline
 
 help: ## Show this help
@@ -38,6 +38,9 @@ fetch: ## Download the pages listed in data/sources.yaml into data/raw
 ingest: ## Ingest CORPUS (default data/raw)
 	ragent ingest $(CORPUS)
 
+ask: ## Ask the agent:  make ask Q="..."
+	ragent ask "$(Q)"
+
 search: ## Retrieval only:  make search Q="..."
 	ragent search "$(Q)"
 
@@ -58,5 +61,5 @@ format: ## Format the code
 chunk-stats: ## Compare chunking settings on CORPUS
 	ragent chunk-stats $(CORPUS)
 
-demo-offline: ## Retrieval with no Ollama and no database
-	ragent search "$(Q)" --offline data/sample
+demo-offline: ## Full path with no Ollama and no database
+	ragent ask "$(Q)" --offline data/sample

@@ -1,11 +1,14 @@
-"""Wires the parts together from Settings. Every entry point builds its objects here,
-so they always run the same code."""
+"""Wires the parts together from Settings. The CLI, the API and the eval runner all
+build their objects here, so they always run the same code."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
 
+from ragent.agent.loop import Agent
+from ragent.agent.single_shot import SingleShotRAG
+from ragent.agent.tools import Toolbox
 from ragent.config import Settings
 from ragent.ingest.loaders import load_dir
 from ragent.ingest.pipeline import ingest_documents
@@ -22,6 +25,9 @@ class Container:
     embedder: Embedder
     chat: ChatModel
     retriever: HybridRetriever
+    toolbox: Toolbox
+    agent: Agent
+    single_shot: SingleShotRAG
 
 
 def build_embedder(s: Settings) -> Embedder:
@@ -82,12 +88,16 @@ def build_container(
     embedder = embedder or build_embedder(s)
     chat = chat or build_chat(s)
     retriever = HybridRetriever(store, embedder, build_reranker(s, chat), s)
+    toolbox = Toolbox(retriever, store, s)
     return Container(
         settings=s,
         store=store,
         embedder=embedder,
         chat=chat,
         retriever=retriever,
+        toolbox=toolbox,
+        agent=Agent(chat, toolbox, s),
+        single_shot=SingleShotRAG(chat, retriever, s),
     )
 
 

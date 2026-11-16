@@ -1,10 +1,10 @@
 # ragent
 
-Retrieval core of an agentic RAG assistant over AWS documentation: ingestion, a
-pgvector store and hybrid retrieval, in Python. Public repo: never commit secrets, real
+Agentic RAG assistant over AWS documentation, in Python: ingestion, a pgvector store,
+hybrid retrieval, a tool-calling agent loop and guardrails. Public repo: never commit secrets, real
 data, or fetched documentation (`data/raw/` is git-ignored).
 
-The agent, guardrails, eval suite and API are not in the repo yet. `docs/PENDING.md`
+The eval suite and HTTP API are not in the repo yet. `docs/PENDING.md`
 lists what is missing and which files change when each part lands. `docs/DESIGN.md` and
 `docs/PLAN.md` describe the whole project.
 
@@ -21,7 +21,7 @@ lists what is missing and which files change when each part lands. `docs/DESIGN.
 | Offline demo | `make demo-offline` |
 | Migrations | `make migrate` (applies `db/migrations/*.sql` in order) |
 
-CI (`.github/workflows/ci.yml`) runs lint, unit tests, an offline search smoke test,
+CI (`.github/workflows/ci.yml`) runs lint, unit tests, an offline agent smoke test,
 and the integration tests against a pgvector service. A change is acceptable only when
 lint and unit tests pass locally.
 
@@ -32,12 +32,15 @@ Runtime: Python >= 3.11 (CI uses 3.12). Package manager: pip, editable install.
 ```
 src/ragent/config.py     all settings; the only place that reads RAGENT_* variables
 src/ragent/models.py     plain dataclasses passed between modules
-src/ragent/factory.py    builds store, embedder, chat, retriever from Settings
-src/ragent/cli.py        migrate, ingest, chunk-stats, search
+src/ragent/factory.py    builds store, embedder, chat, retriever, agent from Settings
+src/ragent/cli.py        migrate, ingest, chunk-stats, search, ask
 src/ragent/ingest/       loaders, chunking, pipeline
 src/ragent/store/        ChunkStore protocol, pgvector and in-memory implementations
 src/ragent/retrieval/    retriever, RRF fusion, rerankers
 src/ragent/llm/          Embedder/ChatModel protocols, Ollama and fake implementations
+src/ragent/agent/        agent loop, tools, prompts, single-shot RAG baseline
+src/ragent/guardrails/   input checks, injection scan, citation validation
+src/ragent/observability/ trace ids and timing
 tests/unit/              no services; tests/integration/ needs PostgreSQL
 ```
 
@@ -57,6 +60,8 @@ tests/unit/              no services; tests/integration/ needs PostgreSQL
 
 - Changing chunking settings or the embedding model re-ingests every document.
   Changing `embed_dim` needs a new migration.
+- `evals/poisoned/` holds a deliberately malicious document for the injection tests.
+  Never ingest it into a store you use for real questions.
 - `make models` downloads several GB.
 - The database credentials in `docker-compose.yml` and `.env.example` are local
   development defaults, not secrets. Do not reuse them anywhere reachable.

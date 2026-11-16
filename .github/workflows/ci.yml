@@ -24,8 +24,8 @@ jobs:
           ruff format --check .
       - name: Unit tests
         run: pytest -q
-      - name: Offline retrieval smoke test
-        run: ragent search "What is the default visibility timeout for an SQS queue?" --offline data/sample
+      - name: Offline agent smoke test
+        run: ragent ask "What is the default visibility timeout for an SQS queue?" --offline data/sample
 
   integration:
     runs-on: ubuntu-latest
