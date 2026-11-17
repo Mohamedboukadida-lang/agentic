@@ -26,6 +26,19 @@ jobs:
         run: pytest -q
       - name: Offline agent smoke test
         run: ragent ask "What is the default visibility timeout for an SQS queue?" --offline data/sample
+      - name: Validate eval datasets
+        run: |
+          ragent eval validate
+          ragent eval validate --dataset evals/injection.jsonl
+      # The gate. Fake embedder + in-memory store on the sample corpus: no model, no database.
+      # Raise --min-hit-rate whenever an experiment lands (see docs/EVAL_REPORT.md).
+      - name: Offline retrieval eval
+        run: ragent eval retrieval --offline data/sample --min-hit-rate 0.90 --out evals/runs/ci-retrieval.md
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-report
+          path: evals/runs/
 
   integration:
     runs-on: ubuntu-latest
