@@ -5,9 +5,12 @@
     ragent chunk-stats data/sample         compare chunking settings without storing
     ragent search "visibility timeout"     show retrieval with per-stage ranks
     ragent ask "..."                       ask the agent (--single-shot for plain RAG)
+    ragent eval validate                   check the dataset file
+    ragent eval retrieval                  hit rate, recall, MRR  (no chat model needed)
+    ragent eval answers                    refusal accuracy, coverage, citations, latency
 
-Add --offline DIR to search and ask to run with fake providers and an in-memory store
-filled from DIR. No Ollama and no database needed.
+Add --offline DIR to search, ask and eval to run with fake providers and an in-memory
+store filled from DIR. No Ollama and no database needed.
 """
 
 from __future__ import annotations
@@ -19,7 +22,10 @@ import sys
 from pathlib import Path
 
 from ragent.config import Settings
+from ragent.eval.dataset import load_dataset
 from ragent.factory import Container, build_container, build_offline_container
+
+DEFAULT_DATASET = Path("evals/dataset.jsonl")
 
 
 def _container(args: argparse.Namespace, **overrides: object) -> Container:
@@ -112,6 +118,51 @@ def cmd_ask(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_eval(args: argparse.Namespace) -> int:
+    from ragent.eval import report as render
+    from ragent.eval.runner import run_answer_eval, run_retrieval_eval
+
+    items = load_dataset(Path(args.dataset))
+    if args.split:
+        items = [i for i in items if i.split == args.split]
+    if args.what == "validate":
+        kinds = sorted({i.type for i in items})
+        counts = ", ".join(f"{k}: {sum(1 for i in items if i.type == k)}" for k in kinds)
+        print(f"{args.dataset}: {len(items)} questions OK ({counts})")
+        return 0
+
+    c = _container(args)
+    if args.what == "retrieval":
+        report = run_retrieval_eval(items, c.retriever, args.k, args.mode)
+        score = report.summary[f"hit_rate@{args.k}"]
+    else:
+        answerer = c.single_shot if args.single_shot else c.agent
+        report = run_answer_eval(items, answerer, c.store, c.chat if args.judge else None)
+        score = report.summary.get("refusal_accuracy", 0.0)
+    s = c.settings
+    report.config.update(
+        {
+            "provider": s.llm_provider,
+            "store": s.store,
+            "chunking": f"{s.chunk_strategy}/{s.chunk_tokens}",
+            "retrieval": s.retrieval_mode,
+            "reranker": s.reranker,
+        }
+    )
+    text = render.to_json(report) if args.json else render.to_markdown(report)
+    print(text)
+    if args.out:
+        Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.out).write_text(text, encoding="utf-8")
+    if args.what == "retrieval" and args.min_hit_rate is not None and score < args.min_hit_rate:
+        print(
+            f"FAIL: hit rate {score:.3f} is below the floor {args.min_hit_rate:.3f}",
+            file=sys.stderr,
+        )
+        return 1
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="ragent", description="Agentic RAG assistant")
     parser.add_argument("-v", "--verbose", action="store_true", help="print trace logs")
@@ -144,6 +195,22 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--json", action="store_true")
     p.add_argument("--offline", metavar="DIR")
     p.set_defaults(func=cmd_ask)
+
+    p = sub.add_parser("eval", help="run or validate the eval set")
+    p.add_argument("what", choices=["validate", "retrieval", "answers"])
+    p.add_argument("--dataset", default=str(DEFAULT_DATASET))
+    p.add_argument("--split", choices=["dev", "test"])
+    p.add_argument("-k", type=int, default=5)
+    p.add_argument("--mode", choices=["hybrid", "vector", "keyword"])
+    p.add_argument("--min-hit-rate", type=float, help="exit 1 if the hit rate is lower (CI gate)")
+    p.add_argument("--single-shot", action="store_true")
+    p.add_argument(
+        "--judge", action="store_true", help="also score faithfulness with the chat model"
+    )
+    p.add_argument("--json", action="store_true")
+    p.add_argument("--out", help="also write the report to this file")
+    p.add_argument("--offline", metavar="DIR")
+    p.set_defaults(func=cmd_eval)
     return parser
 
 

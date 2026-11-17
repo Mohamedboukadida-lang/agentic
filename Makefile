@@ -4,7 +4,8 @@ Q ?= What is the default visibility timeout for an SQS queue?
 CORPUS ?= data/raw
 
 .PHONY: help setup models up down migrate ingest-sample ingest fetch ask search \
-        test test-integration lint format chunk-stats demo-offline
+        test test-integration lint format chunk-stats eval eval-answers eval-injection \
+        eval-offline demo-offline
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-18s %s\n", $$1, $$2}'
@@ -60,6 +61,18 @@ format: ## Format the code
 
 chunk-stats: ## Compare chunking settings on CORPUS
 	ragent chunk-stats $(CORPUS)
+
+eval: ## Retrieval eval against the real store and embedder
+	ragent eval retrieval --out evals/runs/retrieval.md
+
+eval-answers: ## Answer eval with the agent (slow: one model run per question)
+	ragent eval answers --out evals/runs/answers.md
+
+eval-injection: ## Attack success rate on the poisoned fixture (ingest evals/poisoned first)
+	ragent eval answers --dataset evals/injection.jsonl --out evals/runs/injection.md
+
+eval-offline: ## The CI gate: retrieval eval with fake providers on the sample corpus
+	ragent eval retrieval --offline data/sample --min-hit-rate 0.90
 
 demo-offline: ## Full path with no Ollama and no database
 	ragent ask "$(Q)" --offline data/sample

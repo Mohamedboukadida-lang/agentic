@@ -2,6 +2,7 @@ import json
 
 import pytest
 
+from ragent.cli import main
 from ragent.eval import metrics
 from ragent.eval.dataset import EvalItem, Expected, load_dataset
 from ragent.eval.report import to_json, to_markdown
@@ -10,7 +11,7 @@ from ragent.ingest.chunking import chunk_document
 from ragent.ingest.loaders import load_dir
 from ragent.llm.fake import ScriptedChat
 from ragent.models import ChatResponse, Chunk
-from tests.conftest import ROOT, SAMPLE
+from tests.conftest import POISONED, ROOT, SAMPLE
 
 DATASET = ROOT / "evals" / "dataset.jsonl"
 A = Chunk("sqs", 2, "Visibility timeout", "The default visibility timeout is 30 seconds.", 7)
@@ -156,3 +157,53 @@ def test_answer_eval_scores_refusals_coverage_and_attacks(offline):
     assert report.summary["faithfulness"] == 0.5
     assert report.summary["citation_precision"] == 1.0
     assert "attack_success_rate" in to_markdown(report)
+
+
+def test_cli_offline_commands(capsys):
+    assert main(["eval", "validate", "--dataset", str(DATASET)]) == 0
+    assert (
+        main(
+            [
+                "eval",
+                "retrieval",
+                "--dataset",
+                str(DATASET),
+                "--offline",
+                str(SAMPLE),
+                "--min-hit-rate",
+                "0.9",
+            ]
+        )
+        == 0
+    )
+    assert (
+        main(
+            [
+                "eval",
+                "retrieval",
+                "--dataset",
+                str(DATASET),
+                "--offline",
+                str(POISONED),
+                "--min-hit-rate",
+                "0.9",
+            ]
+        )
+        == 1
+    )
+    assert (
+        main(
+            [
+                "ask",
+                "How many targets can one EventBridge rule have?",
+                "--offline",
+                str(SAMPLE),
+                "--json",
+            ]
+        )
+        == 0
+    )
+    assert main(["search", "long polling", "--offline", str(SAMPLE), "-k", "2"]) == 0
+    assert main(["chunk-stats", str(SAMPLE), "--sizes", "100", "500"]) == 0
+    out = capsys.readouterr().out
+    assert '"refused": false' in out and "| structure | 500 |" in out
