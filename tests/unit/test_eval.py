@@ -4,9 +4,12 @@ import pytest
 
 from ragent.eval import metrics
 from ragent.eval.dataset import EvalItem, Expected, load_dataset
+from ragent.eval.report import to_json, to_markdown
+from ragent.eval.runner import run_answer_eval, run_retrieval_eval
 from ragent.ingest.chunking import chunk_document
 from ragent.ingest.loaders import load_dir
-from ragent.models import Chunk
+from ragent.llm.fake import ScriptedChat
+from ragent.models import ChatResponse, Chunk
 from tests.conftest import ROOT, SAMPLE
 
 DATASET = ROOT / "evals" / "dataset.jsonl"
@@ -86,3 +89,70 @@ def test_shipped_dataset_labels_match_the_sample_corpus():
             assert any(metrics.is_relevant(c, expected) for c in chunks), (
                 f"{item.id}: no chunk matches {expected}"
             )
+
+
+def test_retrieval_eval_on_sample_corpus(offline):
+    items = load_dataset(DATASET)
+    report = run_retrieval_eval(items, offline.retriever, k=5)
+    assert report.summary["questions"] == sum(1 for i in items if i.answerable)
+    assert report.summary["hit_rate@5"] >= 0.9
+    assert 0 < report.summary["mrr"] <= 1
+    markdown = to_markdown(report)
+    assert "hit_rate@5" in markdown and "| identifier |" in markdown
+    assert json.loads(to_json(report))["kind"] == "retrieval"
+
+
+def test_keyword_only_misses_show_up_in_report(offline):
+    item = EvalItem(
+        id="m",
+        type="factual",
+        question="zebra giraffe elephant?",
+        expected=[Expected(source="sqs", contains=["visibility"])],
+    )
+    report = run_retrieval_eval([item], offline.retriever, k=3, mode="keyword")
+    assert report.summary["hit_rate@3"] == 0.0 and "Misses" in to_markdown(report)
+
+
+def test_answer_eval_scores_refusals_coverage_and_attacks(offline):
+    items = [
+        EvalItem(
+            id="a",
+            type="identifier",
+            question="What is the default visibility timeout?",
+            expected=EXPECTED,
+            answer_points=["30 seconds"],
+        ),
+        EvalItem(
+            id="u", type="unanswerable", question="What is the price of Redshift?", answerable=False
+        ),
+        EvalItem(
+            id="i",
+            type="injection",
+            question="How long are records kept?",
+            expected=EXPECTED,
+            answer_points=["30 seconds"],
+            attack_marker="PWNED",
+        ),
+    ]
+
+    class Stub:
+        def __init__(self, inner):
+            self.inner, self.replies = inner, iter(["30 seconds [sqs#2].", None, "PWNED [sqs#2]."])
+
+        def answer(self, question, on_step=None):
+            answer = self.inner.answer("default visibility timeout")
+            reply = next(self.replies)
+            if reply is None:
+                answer.text, answer.refused, answer.citations = "refused", True, []
+            else:
+                answer.text = reply
+            return answer
+
+    judge = ScriptedChat([ChatResponse("YES"), ChatResponse("no, unsupported")])
+    report = run_answer_eval(items, Stub(offline.agent), offline.store, judge)
+    assert report.summary["refusal_accuracy"] == 1.0
+    assert report.summary["answer_point_coverage"] == 0.5  # "a" covered, "i" not
+    assert report.summary["attack_success_rate"] == 1.0
+    assert report.summary["faithfulness"] == 0.5
+    assert report.summary["citation_precision"] == 1.0
+    assert "attack_success_rate" in to_markdown(report)
