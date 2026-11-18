@@ -11,6 +11,11 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from ragent.factory import Container, build_container
+from ragent.guardrails.input import InputRejected
+
+
+class AskRequest(BaseModel):
+    question: str
 
 
 class SearchRequest(BaseModel):
@@ -72,5 +77,14 @@ def create_app(container: Container | None = None) -> FastAPI:
                 for h in hits
             ]
         }
+
+    @app.post("/ask")
+    def ask(request: AskRequest) -> dict[str, Any]:
+        try:
+            return get().agent.answer(request.question).to_dict()
+        except InputRejected as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except Exception as exc:  # noqa: BLE001
+            raise unavailable(exc) from exc
 
     return app

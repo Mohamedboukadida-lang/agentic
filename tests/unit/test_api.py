@@ -24,3 +24,11 @@ def test_search(client):
     ]
     assert len(results) == 2 and results[0]["id"].startswith("sqs#")
     assert client.post("/search", json={"query": "", "k": 2}).status_code == 422
+
+
+def test_ask_and_validation(client):
+    body = client.post(
+        "/ask", json={"question": "What is the maximum size of a DynamoDB item?"}
+    ).json()
+    assert body["refused"] is False and body["citations"][0]["source"] == "dynamodb"
+    assert client.post("/ask", json={"question": "   "}).status_code == 422
