@@ -1,7 +1,7 @@
 # Pending: what has not been pushed yet
 
 This repository was pushed in parts. Parts 1 (retrieval core), 2 (guardrails and agent)
-and 3 (evaluation suite) are on `main`. The rest
+and 3 (evaluation suite) are on `main`, plus the HTTP API half of part 4. The rest
 exists in the original project archive (`agentic-rag.zip`) and lands in the order below.
 Tick a part when it is merged, and delete this file when the list is empty.
 
@@ -33,14 +33,14 @@ Paths are relative to the repository root and are the same in the archive.
       artifact upload. Drop the "Offline agent smoke test" step only if the gate and answer eval cover it.
       (Kept: the retrieval gate does not exercise the agent.)
 
-## Part 4: HTTP API and container image
+## Part 4: HTTP API (done) and container image (pending)
 
-- [ ] Add `src/ragent/api/` (`app.py`)
-- [ ] Add `tests/unit/test_api.py`
+- [x] Add `src/ragent/api/` (`app.py`)
+- [x] Add `tests/unit/test_api.py`
 - [ ] Add `Dockerfile`, `.dockerignore`
-- [ ] Restore in `pyproject.toml`: `fastapi>=0.110`, `uvicorn[standard]>=0.29`
-- [ ] Restore in `src/ragent/cli.py`: `cmd_serve`, the `serve` subparser
-- [ ] Restore in `Makefile`: `serve` target
+- [x] Restore in `pyproject.toml`: `fastapi>=0.110`, `uvicorn[standard]>=0.29`
+- [x] Restore in `src/ragent/cli.py`: `cmd_serve`, the `serve` subparser
+- [x] Restore in `Makefile`: `serve` target
 - [ ] Restore in `docker-compose.yml`: the `api` service and its header comment line
 
 ## After the last part
@@ -50,7 +50,7 @@ Paths are relative to the repository root and are the same in the archive.
 - [ ] Update `CLAUDE.md` (commands, layout) for the full project
 - [ ] Delete this file
 - [ ] Check: `ruff check . && ruff format --check . && pytest -q` gives 80 passed
-      (63 after part 2, 76 after part 3), and
+      (63 after part 2, 76 after part 3, 80 after the API), and
       `ragent eval retrieval --offline data/sample --min-hit-rate 0.90` exits 0
 
 ## Not in the archive (your own work, per docs/PLAN.md)

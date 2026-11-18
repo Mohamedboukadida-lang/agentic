@@ -1,10 +1,10 @@
 # ragent
 
 Agentic RAG assistant over AWS documentation, in Python: ingestion, a pgvector store,
-hybrid retrieval, a tool-calling agent loop, guardrails and an eval suite. Public repo: never commit secrets, real
+hybrid retrieval, a tool-calling agent loop, guardrails, an eval suite and an HTTP API. Public repo: never commit secrets, real
 data, or fetched documentation (`data/raw/` is git-ignored).
 
-The HTTP API is not in the repo yet. `docs/PENDING.md`
+The container image (Dockerfile, compose `api` service) is not in the repo yet. `docs/PENDING.md`
 lists what is missing and which files change when each part lands. `docs/DESIGN.md` and
 `docs/PLAN.md` describe the whole project.
 
@@ -20,6 +20,7 @@ lists what is missing and which files change when each part lands. `docs/DESIGN.
 | Format | `make format` |
 | Offline demo | `make demo-offline` |
 | Offline eval (the CI gate) | `make eval-offline` |
+| API on :8000 | `make serve` (`/health`, `/search`, `/ask`, `/ask/stream`) |
 | Migrations | `make migrate` (applies `db/migrations/*.sql` in order) |
 
 CI (`.github/workflows/ci.yml`) runs lint, unit tests, an offline agent smoke test,
@@ -34,7 +35,8 @@ Runtime: Python >= 3.11 (CI uses 3.12). Package manager: pip, editable install.
 src/ragent/config.py     all settings; the only place that reads RAGENT_* variables
 src/ragent/models.py     plain dataclasses passed between modules
 src/ragent/factory.py    builds store, embedder, chat, retriever, agent from Settings
-src/ragent/cli.py        migrate, ingest, chunk-stats, search, ask, eval
+src/ragent/cli.py        migrate, ingest, chunk-stats, search, ask, eval, serve
+src/ragent/api/app.py    FastAPI app factory; a thin layer, no logic of its own
 src/ragent/ingest/       loaders, chunking, pipeline
 src/ragent/store/        ChunkStore protocol, pgvector and in-memory implementations
 src/ragent/retrieval/    retriever, RRF fusion, rerankers

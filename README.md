@@ -6,7 +6,7 @@ the documents do not hold the answer.
 
 Runs locally on [Ollama](https://ollama.com) and PostgreSQL with pgvector. No API key.
 
-> **Status: everything except the HTTP API.** The results table below is empty on
+> **Status: everything except the container image.** The results table below is empty on
 > purpose until the eval runs on a real corpus. What is
 > coming and in which order is listed in [docs/PENDING.md](docs/PENDING.md).
 > [docs/DESIGN.md](docs/DESIGN.md) and [docs/PLAN.md](docs/PLAN.md) describe the whole
@@ -21,7 +21,7 @@ flowchart LR
   end
   E --> S[(PostgreSQL + pgvector)]
   subgraph Answering
-    C[ragent ask] --> G[Agent loop] --> T[Tools] --> R[Hybrid retriever]
+    C[ragent ask / FastAPI] --> G[Agent loop] --> T[Tools] --> R[Hybrid retriever]
     G <--> M[Ollama chat model]
   end
   R --> S
@@ -66,6 +66,8 @@ make migrate
 make ingest-sample
 make ask Q="What happens to a message that is not deleted before the visibility timeout ends?"
 make search Q="long polling attribute"
+make serve           # then: curl -s localhost:8000/ask -H 'content-type: application/json' \
+                     #         -d '{"question": "How many targets can one EventBridge rule have?"}'
 ragent -v ask "..."  # also prints the trace line
 ```
 
@@ -135,7 +137,7 @@ number._
 ## Project layout
 
 ```
-src/ragent/        the package (config, llm, ingest, store, retrieval, agent, guardrails, eval)
+src/ragent/        the package (config, llm, ingest, store, retrieval, agent, guardrails, api, eval)
 tests/unit/        run with no services
 tests/integration/ run against PostgreSQL (pytest -m integration)
 data/sample/       six short study notes for the offline demo
