@@ -8,6 +8,7 @@
     ragent eval validate                   check the dataset file
     ragent eval retrieval                  hit rate, recall, MRR  (no chat model needed)
     ragent eval answers                    refusal accuracy, coverage, citations, latency
+    ragent serve                           start the HTTP API
 
 Add --offline DIR to search, ask and eval to run with fake providers and an in-memory
 store filled from DIR. No Ollama and no database needed.
@@ -163,6 +164,13 @@ def cmd_eval(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_serve(args: argparse.Namespace) -> int:
+    import uvicorn
+
+    uvicorn.run("ragent.api.app:create_app", factory=True, host=args.host, port=args.port)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="ragent", description="Agentic RAG assistant")
     parser.add_argument("-v", "--verbose", action="store_true", help="print trace logs")
@@ -211,6 +219,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out", help="also write the report to this file")
     p.add_argument("--offline", metavar="DIR")
     p.set_defaults(func=cmd_eval)
+
+    p = sub.add_parser("serve", help="start the HTTP API")
+    p.add_argument("--host", default="127.0.0.1")
+    p.add_argument("--port", type=int, default=8000)
+    p.set_defaults(func=cmd_serve)
     return parser
 
 

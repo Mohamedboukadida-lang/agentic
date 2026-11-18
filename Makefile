@@ -3,7 +3,7 @@ PY ?= python3
 Q ?= What is the default visibility timeout for an SQS queue?
 CORPUS ?= data/raw
 
-.PHONY: help setup models up down migrate ingest-sample ingest fetch ask search \
+.PHONY: help setup models up down migrate ingest-sample ingest fetch ask search serve \
         test test-integration lint format chunk-stats eval eval-answers eval-injection \
         eval-offline demo-offline
 
@@ -44,6 +44,9 @@ ask: ## Ask the agent:  make ask Q="..."
 
 search: ## Retrieval only:  make search Q="..."
 	ragent search "$(Q)"
+
+serve: ## Start the API on http://127.0.0.1:8000
+	ragent serve
 
 test: ## Unit tests (no Ollama, no database)
 	pytest -q
