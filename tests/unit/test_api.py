@@ -32,3 +32,12 @@ def test_ask_and_validation(client):
     ).json()
     assert body["refused"] is False and body["citations"][0]["source"] == "dynamodb"
     assert client.post("/ask", json={"question": "   "}).status_code == 422
+
+
+def test_ask_stream_sends_step_answer_done(client):
+    with client.stream(
+        "POST", "/ask/stream", json={"question": "How many targets can one EventBridge rule have?"}
+    ) as r:
+        text = "".join(r.iter_text())
+    events = [line.split(": ", 1)[1] for line in text.splitlines() if line.startswith("event: ")]
+    assert events == ["step", "answer", "done"]
